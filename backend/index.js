@@ -33,6 +33,12 @@ pool.query(`CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(200)
 )`);
 
+// Create relationships table if not exists
+pool.query(`CREATE TABLE IF NOT EXISTS relationships (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE
+)`);
+
 // Add default user if not exists
 (async () => {
   const hashed = await bcrypt.hash('test', 10);
@@ -42,6 +48,53 @@ pool.query(`CREATE TABLE IF NOT EXISTS users (
      ON CONFLICT (username) DO NOTHING`,
     ['Test User', 'test', 'test@example.com', hashed]
   );
+  // Add default relationships if not exist
+  // Grouped by relationship type
+  const familyRelationships = [
+    'Father', 'Mother', 'Son', 'Daughter', 'Brother', 'Sister', 'Parent', 'Sibling', 'Child',
+    'Grand Father', 'Grand Mother', 'Grand Son', 'Grand Daughter',
+    'Great Grand Father', 'Great Grand Mother', 'Great Grand Son', 'Great Grand Daughter',
+    'Uncle', 'Aunt', 'Nephew', 'Niece', 'Cousin',
+    'Step Father', 'Step Mother', 'Step Brother', 'Step Sister', 'Step Son', 'Step Daughter',
+    'Father-in-law', 'Mother-in-law', 'Brother-in-law', 'Sister-in-law', 'Son-in-law', 'Daughter-in-law',
+    'Husband', 'Wife', 'Spouse',
+  ];
+  const exFamilyRelationships = [
+    'Ex-Father', 'Ex-Mother', 'Ex-Son', 'Ex-Daughter', 'Ex-Brother', 'Ex-Sister', 'Ex-Parent', 'Ex-Sibling', 'Ex-Child',
+    'Ex-Grand Father', 'Ex-Grand Mother', 'Ex-Grand Son', 'Ex-Grand Daughter',
+    'Ex-Great Grand Father', 'Ex-Great Grand Mother', 'Ex-Great Grand Son', 'Ex-Great Grand Daughter',
+    'Ex-Uncle', 'Ex-Aunt', 'Ex-Nephew', 'Ex-Niece', 'Ex-Cousin',
+    'Ex-Step Father', 'Ex-Step Mother', 'Ex-Step Brother', 'Ex-Step Sister', 'Ex-Step Son', 'Ex-Step Daughter',
+    'Ex-Father-in-law', 'Ex-Mother-in-law', 'Ex-Brother-in-law', 'Ex-Sister-in-law', 'Ex-Son-in-law', 'Ex-Daughter-in-law',
+    'Ex-Husband', 'Ex-Wife',
+  ];
+  const romanticRelationships = [
+    'Boy Friend', 'Girl Friend', 'Fiancé', 'Fiancée', 'Lover', 'Spouse', 'Husband', 'Wife', 'Crush', 'Time Pass',
+  ];
+  const exRomanticRelationships = [
+    'Ex-Boy Friend', 'Ex-Girl Friend', 'Ex-Fiancé', 'Ex-Fiancée', 'Ex-Lover', 'Ex-Spouse', 'Ex-Husband', 'Ex-Wife', 'Ex-Crush', 'Ex-Time Pass',
+  ];
+  const socialRelationships = [
+    'Friend',
+  ];
+  const exSocialRelationships = [
+    'Ex-Friend',
+  ];
+  // Combine all for insertion
+  const defaultRelationships = [
+    ...familyRelationships,
+    ...exFamilyRelationships,
+    ...romanticRelationships,
+    ...exRomanticRelationships,
+    ...socialRelationships,
+    ...exSocialRelationships,
+  ];
+  for (const name of defaultRelationships) {
+    await pool.query(
+      `INSERT INTO relationships (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`,
+      [name]
+    );
+  }
 })();
 
 app.post('/signup', async (req, res) => {
@@ -73,6 +126,16 @@ app.post('/signin', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ error: 'Invalid credentials' });
     res.json({ success: true, user: { id: user.id, name: user.name, username: user.username, email: user.email } });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get all relationships
+app.get('/relationships', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM relationships ORDER BY name ASC');
+    res.json({ relationships: result.rows });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
