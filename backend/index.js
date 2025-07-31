@@ -188,10 +188,16 @@ app.post('/signin', async (req, res) => {
 });
 
 
-// Get all persons
+// Get all persons (optionally filter by user_id)
 app.get('/persons', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM persons ORDER BY name ASC');
+    const { user_id } = req.query;
+    let result;
+    if (user_id) {
+      result = await pool.query('SELECT * FROM persons WHERE user_id = $1 ORDER BY name ASC', [user_id]);
+    } else {
+      result = await pool.query('SELECT * FROM persons ORDER BY name ASC');
+    }
     // Convert profile_pic buffer to base64 string
     const people = result.rows.map(person => ({
       ...person,
