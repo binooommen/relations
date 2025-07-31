@@ -50,7 +50,8 @@ pool.query(`CREATE TABLE IF NOT EXISTS person (
   address TEXT,
   email VARCHAR(100) UNIQUE,
   phone_number VARCHAR(30),
-  date_of_death DATE
+  date_of_death DATE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 )`);
 
 // Add default user if not exists
@@ -68,6 +69,9 @@ pool.query(`CREATE TABLE IF NOT EXISTS person (
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAgMBAp6n1e8AAAAASUVORK5CYII=',
     'base64'
   );
+  // Get the default user's id
+  const userResult = await pool.query('SELECT id FROM users WHERE username = $1', ['test']);
+  const defaultUserId = userResult.rows.length > 0 ? userResult.rows[0].id : null;
   const defaultPerson = [
     {
       name: 'Alice Johnson',
@@ -77,7 +81,8 @@ pool.query(`CREATE TABLE IF NOT EXISTS person (
       address: '123 Main St, Springfield',
       email: 'alice.johnson@example.com',
       phone_number: '+1234567890',
-      date_of_death: null
+      date_of_death: null,
+      user_id: defaultUserId
     },
     {
       name: 'Bob Smith',
@@ -87,15 +92,16 @@ pool.query(`CREATE TABLE IF NOT EXISTS person (
       address: '456 Elm St, Metropolis',
       email: 'bob.smith@example.com',
       phone_number: '+0987654321',
-      date_of_death: null
+      date_of_death: null,
+      user_id: defaultUserId
     }
   ];
   for (const person of defaultPerson) {
     await pool.query(
-      `INSERT INTO person (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO person (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (email) DO NOTHING`,
-      [person.name, person.dob, person.time_of_birth, person.profile_pic, person.address, person.email, person.phone_number, person.date_of_death]
+      [person.name, person.dob, person.time_of_birth, person.profile_pic, person.address, person.email, person.phone_number, person.date_of_death, person.user_id]
     );
   }
   // Add default relationships if not exist
