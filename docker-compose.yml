@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  backend:
+    build: ./backend
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+      POSTGRES_HOST: db
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+    ports:
+      - '3001:3001'
+    depends_on:
+      - db
+    restart: always
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    working_dir: /app
+    command: npm run web
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+    ports:
+      - '8081:8081'
+      - '19000:19000'
+      - '19001:19001'
+      - '19002:19002'
+      - '19006:19006'
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+    depends_on:
+      - backend
+volumes:
+  pgdata:
