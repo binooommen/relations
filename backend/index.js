@@ -33,10 +33,24 @@ pool.query(`CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(200)
 )`);
 
+
 // Create relationships table if not exists
 pool.query(`CREATE TABLE IF NOT EXISTS relationships (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) UNIQUE
+)`);
+
+// Create person table if not exists
+pool.query(`CREATE TABLE IF NOT EXISTS person (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  dob DATE,
+  time_of_birth TIME,
+  profile_pic BYTEA,
+  address TEXT,
+  email VARCHAR(100) UNIQUE,
+  phone_number VARCHAR(30),
+  date_of_death DATE
 )`);
 
 // Add default user if not exists
@@ -48,6 +62,42 @@ pool.query(`CREATE TABLE IF NOT EXISTS relationships (
      ON CONFLICT (username) DO NOTHING`,
     ['Test User', 'test', 'test@example.com', hashed]
   );
+  // Add default person if not exist
+  // Example base64 image data (small transparent PNG)
+  const base64Image = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAgMBAp6n1e8AAAAASUVORK5CYII=',
+    'base64'
+  );
+  const defaultPerson = [
+    {
+      name: 'Alice Johnson',
+      dob: '1990-05-15',
+      time_of_birth: '08:30:00',
+      profile_pic: base64Image,
+      address: '123 Main St, Springfield',
+      email: 'alice.johnson@example.com',
+      phone_number: '+1234567890',
+      date_of_death: null
+    },
+    {
+      name: 'Bob Smith',
+      dob: '1985-11-23',
+      time_of_birth: '14:45:00',
+      profile_pic: base64Image,
+      address: '456 Elm St, Metropolis',
+      email: 'bob.smith@example.com',
+      phone_number: '+0987654321',
+      date_of_death: null
+    }
+  ];
+  for (const person of defaultPerson) {
+    await pool.query(
+      `INSERT INTO person (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (email) DO NOTHING`,
+      [person.name, person.dob, person.time_of_birth, person.profile_pic, person.address, person.email, person.phone_number, person.date_of_death]
+    );
+  }
   // Add default relationships if not exist
   // Grouped by relationship type
   const familyRelationships = [
@@ -126,6 +176,38 @@ app.post('/signin', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ error: 'Invalid credentials' });
     res.json({ success: true, user: { id: user.id, name: user.name, username: user.username, email: user.email } });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// Get all person
+app.get('/person', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM person ORDER BY name ASC');
+    // Convert profile_pic buffer to base64 string
+    const people = result.rows.map(person => ({
+      ...person,
+      profile_pic: person.profile_pic ? person.profile_pic.toString('base64') : null
+    }));
+    res.json({ people });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get person by id
+app.get('/person/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM person WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Person not found' });
+    }
+    const person = result.rows[0];
+    person.profile_pic = person.profile_pic ? person.profile_pic.toString('base64') : null;
+    res.json({ person });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
