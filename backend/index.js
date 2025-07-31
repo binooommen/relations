@@ -40,8 +40,8 @@ pool.query(`CREATE TABLE IF NOT EXISTS relationships (
   name VARCHAR(100) UNIQUE
 )`);
 
-// Create person table if not exists
-pool.query(`CREATE TABLE IF NOT EXISTS person (
+// Create persons table if not exists
+pool.query(`CREATE TABLE IF NOT EXISTS persons (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   dob DATE,
@@ -98,7 +98,7 @@ pool.query(`CREATE TABLE IF NOT EXISTS person (
   ];
   for (const person of defaultPerson) {
     await pool.query(
-      `INSERT INTO person (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id)
+      `INSERT INTO persons (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (email) DO NOTHING`,
       [person.name, person.dob, person.time_of_birth, person.profile_pic, person.address, person.email, person.phone_number, person.date_of_death, person.user_id]
@@ -188,10 +188,10 @@ app.post('/signin', async (req, res) => {
 });
 
 
-// Get all person
-app.get('/person', async (req, res) => {
+// Get all persons
+app.get('/persons', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM person ORDER BY name ASC');
+    const result = await pool.query('SELECT * FROM persons ORDER BY name ASC');
     // Convert profile_pic buffer to base64 string
     const people = result.rows.map(person => ({
       ...person,
@@ -204,10 +204,10 @@ app.get('/person', async (req, res) => {
 });
 
 // Get person by id
-app.get('/person/:id', async (req, res) => {
+app.get('/persons/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM person WHERE id = $1', [id]);
+    const result = await pool.query('SELECT * FROM persons WHERE id = $1', [id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Person not found' });
     }
