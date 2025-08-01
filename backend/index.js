@@ -249,4 +249,36 @@ app.post('/update-name', async (req, res) => {
   }
 });
 
+// Update a person by id
+app.put('/persons/:id', async (req, res) => {
+  const { id } = req.params;
+  const {
+    name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id
+  } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE persons SET
+        name = $1,
+        dob = $2,
+        time_of_birth = $3,
+        profile_pic = $4,
+        address = $5,
+        email = $6,
+        phone_number = $7,
+        date_of_death = $8,
+        user_id = $9
+      WHERE id = $10 RETURNING *`,
+      [name, dob, time_of_birth, profile_pic ? Buffer.from(profile_pic, 'base64') : null, address, email, phone_number, date_of_death, user_id, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Person not found' });
+    }
+    const person = result.rows[0];
+    person.profile_pic = person.profile_pic ? person.profile_pic.toString('base64') : null;
+    res.json({ person });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.listen(3001, () => console.log('Backend running on port 3001'));

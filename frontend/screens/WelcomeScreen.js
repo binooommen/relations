@@ -1,12 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, Image, FlatList } from 'react-native';
+import { View, Text, Button, StyleSheet, Image, FlatList, TouchableOpacity } from 'react-native';
 import { getPersonsByUserId } from '../api/persons';
+import EditPersonScreen from './EditPersonScreen';
+import PersonDetailScreen from './PersonDetailScreen';
 
 export default function WelcomeScreen({ user, onSettings, onSignOut }) {
   const [persons, setPersons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [editingPerson, setEditingPerson] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -16,6 +20,22 @@ export default function WelcomeScreen({ user, onSettings, onSignOut }) {
       .catch(e => { if (mounted) { setError(e.message); setLoading(false); } });
     return () => { mounted = false; };
   }, [user.id]);
+
+  if (editingPerson) {
+    return <EditPersonScreen
+      person={editingPerson}
+      onSave={updated => {
+        setEditingPerson(null);
+        setSelectedPerson(updated);
+        // update persons list
+        setPersons(ps => ps.map(p => p.id === updated.id ? updated : p));
+      }}
+      onCancel={() => setEditingPerson(null)}
+    />;
+  }
+  if (selectedPerson) {
+    return <PersonDetailScreen person={selectedPerson} onBack={() => setSelectedPerson(null)} onEdit={setEditingPerson} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -37,10 +57,12 @@ export default function WelcomeScreen({ user, onSettings, onSignOut }) {
           keyExtractor={item => item.id.toString()}
           style={{ width: '100%', marginTop: 10 }}
           renderItem={({ item }) => (
-            <View style={styles.personRow}>
-              <Text style={styles.personName}>{item.name}</Text>
-              <Text style={styles.personEmail}>{item.email}</Text>
-            </View>
+            <TouchableOpacity onPress={() => setSelectedPerson(item)}>
+              <View style={styles.personRow}>
+                <Text style={styles.personName}>{item.name}</Text>
+                <Text style={styles.personEmail}>{item.email}</Text>
+              </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={<Text style={{ color: '#888' }}>No persons linked to your account.</Text>}
         />
