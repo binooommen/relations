@@ -4,6 +4,7 @@ import { View, Text, Button, StyleSheet, Image, FlatList, TouchableOpacity } fro
 import { getPersonsByUserId } from '../api/persons';
 import EditPersonScreen from './EditPersonScreen';
 import PersonDetailScreen from './PersonDetailScreen';
+import AddPersonScreen from './AddPersonScreen';
 
 export default function WelcomeScreen({ user, onSettings, onSignOut }) {
   const [persons, setPersons] = useState([]);
@@ -11,6 +12,7 @@ export default function WelcomeScreen({ user, onSettings, onSignOut }) {
   const [error, setError] = useState(null);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [editingPerson, setEditingPerson] = useState(null);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -21,13 +23,23 @@ export default function WelcomeScreen({ user, onSettings, onSignOut }) {
     return () => { mounted = false; };
   }, [user.id]);
 
+  if (adding) {
+    return <AddPersonScreen
+      user={user}
+      onSave={person => {
+        setAdding(false);
+        setPersons(ps => [...ps, person]);
+        setSelectedPerson(person);
+      }}
+      onCancel={() => setAdding(false)}
+    />;
+  }
   if (editingPerson) {
     return <EditPersonScreen
       person={editingPerson}
       onSave={updated => {
         setEditingPerson(null);
         setSelectedPerson(updated);
-        // update persons list
         setPersons(ps => ps.map(p => p.id === updated.id ? updated : p));
       }}
       onCancel={() => setEditingPerson(null)}
@@ -48,7 +60,10 @@ export default function WelcomeScreen({ user, onSettings, onSignOut }) {
       <Text style={styles.title}>Welcome, {user.name}!</Text>
       <Button title="Settings" onPress={onSettings} />
       <Button title="Sign Out" onPress={onSignOut} />
-      <Text style={{ fontWeight: 'bold', marginTop: 30, fontSize: 18 }}>Your Persons</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 30, width: '100%', justifyContent: 'space-between' }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Your Persons</Text>
+        <Button title="Add Person" onPress={() => setAdding(true)} />
+      </View>
       {loading && <Text>Loading...</Text>}
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
       {!loading && !error && (

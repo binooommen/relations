@@ -282,3 +282,33 @@ app.put('/persons/:id', async (req, res) => {
 });
 
 app.listen(3001, () => console.log('Backend running on port 3001'));
+// Create a new person
+app.post('/persons', async (req, res) => {
+  const {
+    name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id
+  } = req.body;
+  if (!name || !user_id) {
+    return res.status(400).json({ error: 'Name and user_id are required' });
+  }
+  // Convert empty string date fields to null
+  const dobVal = dob === '' ? null : dob;
+  const timeOfBirthVal = time_of_birth === '' ? null : time_of_birth;
+  const dateOfDeathVal = date_of_death === '' ? null : date_of_death;
+  try {
+    const result = await pool.query(
+      `INSERT INTO persons (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [name, dobVal, timeOfBirthVal, profile_pic ? Buffer.from(profile_pic, 'base64') : null, address, email, phone_number, dateOfDeathVal, user_id]
+    );
+    const person = result.rows[0];
+    person.profile_pic = person.profile_pic ? person.profile_pic.toString('base64') : null;
+    res.status(201).json({ person });
+  } catch (e) {
+    if (e.code === '23505') {
+      res.status(400).json({ error: 'Email already exists' });
+    } else {
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+});
