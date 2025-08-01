@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { addPerson } from '../api/addPerson';
 
 export default function AddPersonScreen({ user, onSave, onCancel }) {
@@ -21,6 +22,19 @@ export default function AddPersonScreen({ user, onSave, onCancel }) {
     setForm(f => ({ ...f, [field]: value }));
   };
 
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets && result.assets[0].base64) {
+      setForm(f => ({ ...f, profile_pic: result.assets[0].base64 }));
+    }
+  };
+
   const handleSubmit = async () => {
     setSaving(true);
     setError(null);
@@ -40,7 +54,19 @@ export default function AddPersonScreen({ user, onSave, onCancel }) {
       <TextInput style={styles.input} placeholder="Name*" value={form.name} onChangeText={v => handleChange('name', v)} />
       <TextInput style={styles.input} placeholder="DOB (YYYY-MM-DD)" value={form.dob} onChangeText={v => handleChange('dob', v)} />
       <TextInput style={styles.input} placeholder="Time of Birth (HH:MM:SS)" value={form.time_of_birth} onChangeText={v => handleChange('time_of_birth', v)} />
-      <TextInput style={styles.input} placeholder="Profile Pic (base64)" value={form.profile_pic} onChangeText={v => handleChange('profile_pic', v)} />
+      <View style={{ width: '100%', alignItems: 'center', marginBottom: 12 }}>
+        {form.profile_pic ? (
+          <Image
+            source={{ uri: `data:image/png;base64,${form.profile_pic}` }}
+            style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 8 }}
+          />
+        ) : (
+          <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#eee', marginBottom: 8 }} />
+        )}
+        <TouchableOpacity onPress={pickImage} style={{ marginBottom: 8 }}>
+          <Text style={{ color: '#007bff' }}>Upload Profile Picture</Text>
+        </TouchableOpacity>
+      </View>
       <TextInput style={styles.input} placeholder="Address" value={form.address} onChangeText={v => handleChange('address', v)} />
       <TextInput style={styles.input} placeholder="Email" value={form.email} onChangeText={v => handleChange('email', v)} />
       <TextInput style={styles.input} placeholder="Phone Number" value={form.phone_number} onChangeText={v => handleChange('phone_number', v)} />

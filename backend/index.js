@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
 // Prevent browser caching issues
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -43,12 +43,12 @@ pool.query(`CREATE TABLE IF NOT EXISTS relationships (
 // Create persons table if not exists
 pool.query(`CREATE TABLE IF NOT EXISTS persons (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL UNIQUE,
   dob DATE,
   time_of_birth TIME,
   profile_pic BYTEA,
   address TEXT,
-  email VARCHAR(100) UNIQUE,
+  email VARCHAR(100),
   phone_number VARCHAR(30),
   date_of_death DATE,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
@@ -100,7 +100,7 @@ pool.query(`CREATE TABLE IF NOT EXISTS persons (
     await pool.query(
       `INSERT INTO persons (name, dob, time_of_birth, profile_pic, address, email, phone_number, date_of_death, user_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (email) DO NOTHING`,
+       ON CONFLICT (name) DO NOTHING`,
       [person.name, person.dob, person.time_of_birth, person.profile_pic, person.address, person.email, person.phone_number, person.date_of_death, person.user_id]
     );
   }
@@ -306,7 +306,7 @@ app.post('/persons', async (req, res) => {
     res.status(201).json({ person });
   } catch (e) {
     if (e.code === '23505') {
-      res.status(400).json({ error: 'Email already exists' });
+      res.status(400).json({ error: 'Name already exists' });
     } else {
       res.status(500).json({ error: 'Server error' });
     }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { updatePerson } from '../api/updatePerson';
 
 export default function EditPersonScreen({ person, onSave, onCancel }) {
@@ -8,6 +9,19 @@ export default function EditPersonScreen({ person, onSave, onCancel }) {
 
   const handleChange = (field, value) => {
     setForm(f => ({ ...f, [field]: value }));
+  };
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets && result.assets[0].base64) {
+      setForm(f => ({ ...f, profile_pic: result.assets[0].base64 }));
+    }
   };
 
   const handleSave = async () => {
@@ -32,7 +46,19 @@ export default function EditPersonScreen({ person, onSave, onCancel }) {
       <TextInput style={styles.input} value={form.time_of_birth} onChangeText={v => handleChange('time_of_birth', v)} placeholder="Time of Birth (HH:MM:SS)" />
       <TextInput style={styles.input} value={form.address} onChangeText={v => handleChange('address', v)} placeholder="Address" />
       <TextInput style={styles.input} value={form.date_of_death} onChangeText={v => handleChange('date_of_death', v)} placeholder="Date of Death (YYYY-MM-DD)" />
-      {/* Profile pic editing can be added here if needed */}
+      <View style={{ width: '100%', alignItems: 'center', marginBottom: 12 }}>
+        {form.profile_pic ? (
+          <Image
+            source={{ uri: `data:image/png;base64,${form.profile_pic}` }}
+            style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 8 }}
+          />
+        ) : (
+          <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#eee', marginBottom: 8 }} />
+        )}
+        <TouchableOpacity onPress={pickImage} style={{ marginBottom: 8 }}>
+          <Text style={{ color: '#007bff' }}>Change Profile Picture</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.buttonRow}>
         <Button title="Cancel" onPress={onCancel} color="#888" disabled={saving} />
         <Button title={saving ? 'Saving...' : 'Save'} onPress={handleSave} disabled={saving} />
