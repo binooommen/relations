@@ -54,6 +54,16 @@ pool.query(`CREATE TABLE IF NOT EXISTS persons (
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 )`);
 
+// Create people_relationships table if not exists
+pool.query(`CREATE TABLE IF NOT EXISTS people_relationships (
+  id SERIAL PRIMARY KEY,
+  people_id INTEGER REFERENCES persons(id) ON DELETE CASCADE,
+  relationship_id INTEGER REFERENCES relationships(id) ON DELETE CASCADE,
+  date DATE,
+  description TEXT,
+  current BOOLEAN DEFAULT true
+)`);
+
 // Add default user if not exists
 (async () => {
   const hashed = await bcrypt.hash('test', 10);
@@ -235,6 +245,95 @@ app.get('/relationships', async (req, res) => {
   }
 });
 
+// --- People Relationships API ---
+// Get all people_relationships
+app.get('/people_relationships', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT pr.*, p.name as person_name, r.name as relationship_name
+       FROM people_relationships pr
+       LEFT JOIN persons p ON pr.people_id = p.id
+       LEFT JOIN relationships r ON pr.relationship_id = r.id
+       ORDER BY pr.id ASC`
+    );
+    res.json({ people_relationships: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get people_relationships for a person
+app.get('/people_relationships/person/:personId', async (req, res) => {
+  try {
+    const { personId } = req.params;
+    const result = await pool.query(
+      `SELECT pr.*, r.name as relationship_name
+       FROM people_relationships pr
+       LEFT JOIN relationships r ON pr.relationship_id = r.id
+       WHERE pr.people_id = $1
+       ORDER BY pr.id ASC`,
+      [personId]
+    );
+    res.json({ people_relationships: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Create a new people_relationship
+app.post('/people_relationships', async (req, res) => {
+  const { people_id, relationship_id, date, description, current } = req.body;
+  if (!people_id || !relationship_id) {
+    return res.status(400).json({ error: 'people_id and relationship_id are required' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO people_relationships (people_id, relationship_id, date, description, current)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [people_id, relationship_id, date || null, description || null, current !== false]
+    );
+    res.status(201).json({ people_relationship: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update a people_relationship
+app.put('/people_relationships/:id', async (req, res) => {
+  const { id } = req.params;
+  const { people_id, relationship_id, date, description, current } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE people_relationships SET
+        people_id = $1,
+        relationship_id = $2,
+        date = $3,
+        description = $4,
+        current = $5
+      WHERE id = $6 RETURNING *`,
+      [people_id, relationship_id, date || null, description || null, current !== false, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Relationship not found' });
+    }
+    res.json({ people_relationship: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete a people_relationship
+app.delete('/people_relationships/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM people_relationships WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Update user name endpoint (should be after all other routes)
 app.post('/update-name', async (req, res) => {
   const { id, name } = req.body;
@@ -312,3 +411,21 @@ app.post('/persons', async (req, res) => {
     }
   }
 });
+// --- Sample Data for people_relationships ---
+(async () => {
+  // ...existing default user, person, and relationships code...
+
+  // Sample: link Alice Johnson (person_id) as "Sister" (relationship_id)
+  const aliceResult = await pool.query(`SELECT id FROM persons WHERE name = $1`, ['Alice Johnson']);
+  const aliceId = aliceResult.rows.length > 0 ? aliceResult.rows[0].id : null;
+  const sisterResult = await pool.query(`SELECT id FROM relationships WHERE name = $1`, ['Sister']);
+  const sisterId = sisterResult.rows.length > 0 ? sisterResult.rows[0].id : null;
+  if (aliceId && sisterId) {
+    await pool.query(
+      `INSERT INTO people_relationships (people_id, relationship_id, date, description, current)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT DO NOTHING`,
+      [aliceId, sisterId, '2020-01-01', 'Sample: Alice is a sister', true]
+    );
+  }
+})();
