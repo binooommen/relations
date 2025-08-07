@@ -17,7 +17,6 @@ export default function PersonDetailScreen({ person, onBack, onEdit }) {
       <Text style={styles.label}>Time of Birth: <Text style={styles.value}>{person.time_of_birth}</Text></Text>
       <Text style={styles.label}>Address: <Text style={styles.value}>{person.address}</Text></Text>
       <Text style={styles.label}>Date of Death: <Text style={styles.value}>{person.date_of_death || '-'}</Text></Text>
-      <Text style={styles.label}>User ID: <Text style={styles.value}>{person.user_id}</Text></Text>
       <View style={styles.buttonRow}>
         <Button title="Back" onPress={onBack} />
         <Button title="Edit" onPress={() => onEdit(person)} />
