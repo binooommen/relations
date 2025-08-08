@@ -1,89 +1,96 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, FlatList, TextInput, Picker, Switch, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { updatePerson } from '../api/updatePerson';
+import { View, Text, Button, FlatList, TextInput, Switch, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { getPeopleRelationshipsByPersonId, addPeopleRelationship } from '../api/people_relationships';
 import { getRelationships } from '../api/relationships';
+import { getPersonsByUserId } from '../api/persons';
 
-export default function EditPersonScreen({ person, onSave, onCancel }) {
-  const [form, setForm] = useState({ ...person });
-  const [saving, setSaving] = useState(false);
+export default function EditPersonScreen({ person, user, onSave, onCancel }) {
+  if (!person || !user) {
+    return <Text>Loading...</Text>;
+  }
+
+  // Use local state for editing person fields
+  const [editPerson, setEditPerson] = useState(person);
   const [relationships, setRelationships] = useState([]);
   const [allRelationships, setAllRelationships] = useState([]);
-  const [newRel, setNewRel] = useState({ relationship_id: '', date: '', description: '', current: true });
+  const [allPersons, setAllPersons] = useState([]);
+  const [newRel, setNewRel] = useState({ people_id: '', relationship_id: '', date: '', description: '', current: true });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setEditPerson(person); // Reset local state when person changes
     getPeopleRelationshipsByPersonId(person.id).then(setRelationships);
     getRelationships().then(setAllRelationships);
-  }, [person.id]);
-
-  const handleChange = (field, value) => {
-    setForm(f => ({ ...f, [field]: value }));
-  };
-
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
+    getPersonsByUserId(user.id).then(persons => {
+      setAllPersons(persons.filter(p => p.id !== person.id));
     });
-    if (!result.canceled && result.assets && result.assets[0].base64) {
-      setForm(f => ({ ...f, profile_pic: result.assets[0].base64 }));
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updatePerson(person.id, form);
-      onSave({ ...form });
-    } catch (e) {
-      Alert.alert('Error', e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+    setNewRel(r => ({ ...r, people_id: '' }));
+  }, [person.id, user.id]);
 
   const handleAddRelationship = async () => {
-    if (!newRel.relationship_id) return;
+    if (!newRel.relationship_id || !newRel.people_id) return;
     setSaving(true);
     const rel = await addPeopleRelationship({
-      people_id: person.id,
-      ...newRel,
+      people_id: newRel.people_id,
+      relationship_id: newRel.relationship_id,
+      date: newRel.date,
+      description: newRel.description,
+      current: newRel.current,
     });
     setRelationships(rs => [...rs, rel]);
-    setNewRel({ relationship_id: '', date: '', description: '', current: true });
+    setNewRel({ people_id: '', relationship_id: '', date: '', description: '', current: true });
     setSaving(false);
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>Edit Person</Text>
-      <TextInput style={styles.input} value={form.name} onChangeText={v => handleChange('name', v)} placeholder="Name" />
-      <TextInput style={styles.input} value={form.email} onChangeText={v => handleChange('email', v)} placeholder="Email" />
-      <TextInput style={styles.input} value={form.phone_number} onChangeText={v => handleChange('phone_number', v)} placeholder="Phone Number" />
-      <TextInput style={styles.input} value={form.dob} onChangeText={v => handleChange('dob', v)} placeholder="DOB (YYYY-MM-DD)" />
-      <TextInput style={styles.input} value={form.time_of_birth} onChangeText={v => handleChange('time_of_birth', v)} placeholder="Time of Birth (HH:MM:SS)" />
-      <TextInput style={styles.input} value={form.address} onChangeText={v => handleChange('address', v)} placeholder="Address" />
-      <TextInput style={styles.input} value={form.date_of_death} onChangeText={v => handleChange('date_of_death', v)} placeholder="Date of Death (YYYY-MM-DD)" />
-      <View style={{ width: '100%', alignItems: 'center', marginBottom: 12 }}>
-        {form.profile_pic ? (
-          <Image
-            source={{ uri: `data:image/png;base64,${form.profile_pic}` }}
-            style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 8 }}
-          />
-        ) : (
-          <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#eee', marginBottom: 8 }} />
-        )}
-        <TouchableOpacity onPress={pickImage} style={{ marginBottom: 8 }}>
-          <Text style={{ color: '#007bff' }}>Change Profile Picture</Text>
-        </TouchableOpacity>
-      </View>
+      <TextInput
+        style={styles.input}
+        value={editPerson.name ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, name: v }))}
+        placeholder="Name"
+      />
+      <TextInput
+        style={styles.input}
+        value={editPerson.email ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, email: v }))}
+        placeholder="Email"
+      />
+      <TextInput
+        style={styles.input}
+        value={editPerson.phone_number ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, phone_number: v }))}
+        placeholder="Phone Number"
+      />
+      <TextInput
+        style={styles.input}
+        value={editPerson.dob ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, dob: v }))}
+        placeholder="DOB (YYYY-MM-DD)"
+      />
+      <TextInput
+        style={styles.input}
+        value={editPerson.time_of_birth ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, time_of_birth: v }))}
+        placeholder="Time of Birth (HH:MM:SS)"
+      />
+      <TextInput
+        style={styles.input}
+        value={editPerson.address ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, address: v }))}
+        placeholder="Address"
+      />
+      <TextInput
+        style={styles.input}
+        value={editPerson.date_of_death ?? ''}
+        onChangeText={v => setEditPerson(p => ({ ...p, date_of_death: v }))}
+        placeholder="Date of Death (YYYY-MM-DD)"
+      />
       <View style={styles.buttonRow}>
         <Button title="Cancel" onPress={onCancel} color="#888" disabled={saving} />
-        <Button title={saving ? 'Saving...' : 'Save'} onPress={handleSave} disabled={saving} />
+        <Button title={saving ? 'Saving...' : 'Save'} onPress={() => onSave(editPerson)} disabled={saving} />
       </View>
       <Text style={styles.sectionTitle}>Relationships</Text>
       <FlatList
@@ -99,6 +106,16 @@ export default function EditPersonScreen({ person, onSave, onCancel }) {
         )}
       />
       <Text style={styles.sectionTitle}>Add Relationship</Text>
+      <Picker
+        selectedValue={newRel.people_id}
+        onValueChange={v => setNewRel(r => ({ ...r, people_id: v }))}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select Person" value="" />
+        {allPersons.map(p => (
+          <Picker.Item key={p.id} label={p.name} value={p.id} />
+        ))}
+      </Picker>
       <Picker
         selectedValue={newRel.relationship_id}
         onValueChange={v => setNewRel(r => ({ ...r, relationship_id: v }))}
@@ -128,17 +145,13 @@ export default function EditPersonScreen({ person, onSave, onCancel }) {
           onValueChange={v => setNewRel(r => ({ ...r, current: v }))}
         />
       </View>
-      <Button title="Add Relationship" onPress={handleAddRelationship} disabled={saving || !newRel.relationship_id} />
-    </ScrollView>
+      <Button title="Add Relationship" onPress={handleAddRelationship} disabled={saving || !newRel.relationship_id || !newRel.people_id} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
+  container: { padding: 16 },
   title: {
     fontSize: 26,
     fontWeight: 'bold',

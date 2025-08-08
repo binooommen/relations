@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, Image, FlatList, TouchableOpacity } from 'react-native';
 import { getPersonsByUserId } from '../api/persons';
@@ -37,6 +36,7 @@ export default function WelcomeScreen({ user, onSettings, onSignOut }) {
   if (editingPerson) {
     return <EditPersonScreen
       person={editingPerson}
+      user={user}
       onSave={updated => {
         setEditingPerson(null);
         setSelectedPerson(updated);
