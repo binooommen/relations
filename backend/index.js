@@ -421,10 +421,16 @@ app.post('/persons', async (req, res) => {
   const sisterResult = await pool.query(`SELECT id FROM relationships WHERE name = $1`, ['Sister']);
   const sisterId = sisterResult.rows.length > 0 ? sisterResult.rows[0].id : null;
   if (aliceId && sisterId) {
+    // Prevent duplicate sample row
     await pool.query(
       `INSERT INTO people_relationships (people_id, relationship_id, date, description, current)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT DO NOTHING`,
+       SELECT $1, $2, $3, $4, $5
+       WHERE NOT EXISTS (
+         SELECT 1 FROM people_relationships
+         WHERE people_id = $1
+           AND relationship_id = $2
+           AND description = $4
+       )`,
       [aliceId, sisterId, '2020-01-01', 'Sample: Alice is a sister', true]
     );
   }
